@@ -253,13 +253,17 @@ function App() {
       )}
       
       {screen === 'setup' && (
-        <ProfileSetup onProfileComplete={handleProfileComplete} />
+        <ProfileSetup 
+          onProfileComplete={handleProfileComplete} 
+          onBack={() => setScreen('home')}
+        />
       )}
       
       {screen === 'setGoal' && userProfile && (
         <GoalSetup 
           userProfile={userProfile}
           onGoalComplete={handleGoalComplete}
+          onBack={() => setScreen('setup')}
         />
       )}
       
@@ -269,6 +273,7 @@ function App() {
           goal={goal}
           onTrainingSelect={handleTrainingSelect}
           onIntervalSelect={handleIntervalSelect}
+          onBack={handleBackToDashboard}
         />
       )}
       
@@ -286,6 +291,7 @@ function App() {
           intervalDistance={intervalDistance || undefined}
           trainingProgress={trainingProgress}
           onTrainingComplete={handleTrainingComplete}
+          onBack={handleBackToTrainingSelection}
         />
       )}
       

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Pause, SkipForward, CheckCircle, Clock, RotateCcw } from 'lucide-react';
+import { Play, Pause, SkipForward, CheckCircle, Clock, RotateCcw, ArrowLeft } from 'lucide-react';
 
 interface Exercise {
   name: string;
@@ -12,9 +12,10 @@ interface Exercise {
 
 interface WarmupSessionProps {
   onComplete: () => void;
+  onBack?: () => void;
 }
 
-export const WarmupSession: React.FC<WarmupSessionProps> = ({ onComplete }) => {
+export const WarmupSession: React.FC<WarmupSessionProps> = ({ onComplete, onBack }) => {
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
   const [timer, setTimer] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
@@ -201,6 +202,16 @@ export const WarmupSession: React.FC<WarmupSessionProps> = ({ onComplete }) => {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md text-center">
+          {onBack && (
+            <div className="flex justify-start mb-4">
+              <button
+                onClick={onBack}
+                className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5 text-gray-600" />
+              </button>
+            </div>
+          )}
           <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <CheckCircle className="w-12 h-12 text-green-600" />
           </div>
@@ -233,11 +244,24 @@ export const WarmupSession: React.FC<WarmupSessionProps> = ({ onComplete }) => {
       <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-lg">
         {/* Header */}
         <div className="text-center mb-6">
-          <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <RotateCcw className="w-8 h-8 text-yellow-600" />
+          <div className="flex items-center justify-between mb-4">
+            {onBack && (
+              <button
+                onClick={onBack}
+                className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5 text-gray-600" />
+              </button>
+            )}
+            <div className="flex-1 text-center">
+              <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <RotateCcw className="w-8 h-8 text-yellow-600" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-800">Aquecimento</h2>
+              <p className="text-gray-600">Prepare seu corpo para o treino</p>
+            </div>
+            <div className="w-10"></div> {/* Spacer for alignment */}
           </div>
-          <h2 className="text-2xl font-bold text-gray-800">Aquecimento</h2>
-          <p className="text-gray-600">Prepare seu corpo para o treino</p>
         </div>
 
         {/* Progress Bar */}

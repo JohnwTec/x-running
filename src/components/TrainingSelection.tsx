@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play, Zap, RotateCcw, Target } from 'lucide-react';
+import { Play, Zap, RotateCcw, Target, ArrowLeft } from 'lucide-react';
 import { UserProfile, Goal } from '../types';
 import { getAgeGroup } from '../utils/calculations';
 
@@ -8,24 +8,39 @@ interface TrainingSelectionProps {
   goal: Goal;
   onTrainingSelect: (type: 'warmup' | 'longa' | 'intervalado', distance?: string) => void;
   onIntervalSelect: () => void;
+  onBack?: () => void;
 }
 
 export const TrainingSelection: React.FC<TrainingSelectionProps> = ({ 
   userProfile, 
   goal, 
   onTrainingSelect, 
-  onIntervalSelect 
+  onIntervalSelect,
+  onBack
 }) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Target className="w-8 h-8 text-purple-600" />
+          <div className="flex items-center justify-between mb-4">
+            {onBack && (
+              <button
+                onClick={onBack}
+                className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5 text-gray-600" />
+              </button>
+            )}
+            <div className="flex-1 text-center">
+              <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Target className="w-8 h-8 text-purple-600" />
+              </div>
+              <h2 className="text-3xl font-bold text-gray-800 mb-2">Escolha seu Treino</h2>
+              <p className="text-gray-600">Nível: {userProfile.level} ({getAgeGroup(userProfile.age)})</p>
+              <p className="text-sm text-gray-500 mt-2">Meta: {goal.distance} km em {goal.months} meses</p>
+            </div>
+            <div className="w-10"></div> {/* Spacer for alignment */}
           </div>
-          <h2 className="text-3xl font-bold text-gray-800 mb-2">Escolha seu Treino</h2>
-          <p className="text-gray-600">Nível: {userProfile.level} ({getAgeGroup(userProfile.age)})</p>
-          <p className="text-sm text-gray-500 mt-2">Meta: {goal.distance} km em {goal.months} meses</p>
         </div>
 
         <div className="space-y-4">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Smartphone, Watch, Activity, Heart, Bluetooth, CheckCircle, X, Loader2, Instagram, Facebook } from 'lucide-react';
+import { Smartphone, Watch, Activity, Heart, Bluetooth, CheckCircle, X, Loader2, Instagram, Facebook, Wifi, WifiOff } from 'lucide-react';
 import { fitnessIntegration } from '../utils/fitnessIntegration';
 
 interface FitnessConnectionModalProps {
@@ -25,11 +25,13 @@ export const FitnessConnectionModal: React.FC<FitnessConnectionModalProps> = ({ 
     facebook: false
   });
   const [amazfitInfo, setAmazfitInfo] = useState<{ name: string; lastSync: Date | null } | null>(null);
+  const [isBluetoothSupported, setIsBluetoothSupported] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       setConnections(fitnessIntegration.getConnectionStatus());
       setAmazfitInfo(fitnessIntegration.getAmazfitInfo());
+      setIsBluetoothSupported('bluetooth' in navigator);
     }
   }, [isOpen]);
 
@@ -42,16 +44,22 @@ export const FitnessConnectionModal: React.FC<FitnessConnectionModalProps> = ({ 
       switch (service) {
         case 'appleHealth':
           success = await fitnessIntegration.requestAppleHealthPermission();
-          if (success) localStorage.setItem('apple_health_connected', 'true');
           break;
         case 'smartwatch':
+          if (!isBluetoothSupported) {
+            alert('Bluetooth não suportado neste navegador. Use Chrome, Edge ou Opera.');
+            break;
+          }
           success = await fitnessIntegration.connectSmartwatch();
-          if (success) localStorage.setItem('smartwatch_connected', 'true');
           break;
         case 'strava':
           success = await fitnessIntegration.connectStrava();
           break;
         case 'amazfit':
+          if (!isBluetoothSupported) {
+            alert('Bluetooth não suportado neste navegador. Use Chrome, Edge ou Opera.');
+            break;
+          }
           success = await fitnessIntegration.connectAmazfit();
           if (success) {
             setAmazfitInfo(fitnessIntegration.getAmazfitInfo());
@@ -60,14 +68,10 @@ export const FitnessConnectionModal: React.FC<FitnessConnectionModalProps> = ({ 
           }
           break;
         case 'instagram':
-          // Simular conexão com Instagram
-          success = true;
-          localStorage.setItem('running_trainer_instagram_connected', 'true');
+          success = await fitnessIntegration.connectInstagram();
           break;
         case 'facebook':
-          // Simular conexão com Facebook
-          success = true;
-          localStorage.setItem('running_trainer_facebook_connected', 'true');
+          success = await fitnessIntegration.connectFacebook();
           break;
       }
       
@@ -76,8 +80,19 @@ export const FitnessConnectionModal: React.FC<FitnessConnectionModalProps> = ({ 
       }
     } catch (error) {
       console.error(`Erro ao conectar ${service}:`, error);
+      alert(`Erro ao conectar com ${service}. Tente novamente.`);
     } finally {
       setLoading(prev => ({ ...prev, [service]: false }));
+    }
+  };
+
+  const handleDisconnect = async (service: keyof typeof connections) => {
+    const success = await fitnessIntegration.disconnectDevice(service);
+    if (success) {
+      setConnections(prev => ({ ...prev, [service]: false }));
+      if (service === 'amazfit') {
+        setAmazfitInfo(null);
+      }
     }
   };
 
@@ -96,6 +111,21 @@ export const FitnessConnectionModal: React.FC<FitnessConnectionModalProps> = ({ 
           </button>
         </div>
 
+        {/* Bluetooth Status */}
+        {!isBluetoothSupported && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <div className="flex items-center">
+              <WifiOff className="w-5 h-5 text-red-600 mr-2" />
+              <div>
+                <h3 className="font-semibold text-red-800">Bluetooth não suportado</h3>
+                <p className="text-sm text-red-700">
+                  Use Chrome, Edge ou Opera para conectar dispositivos Bluetooth
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="space-y-4">
           {/* Apple Health */}
           <div className="border rounded-lg p-4">
@@ -110,7 +140,15 @@ export const FitnessConnectionModal: React.FC<FitnessConnectionModalProps> = ({ 
                 </div>
               </div>
               {connections.appleHealth ? (
-                <CheckCircle className="w-6 h-6 text-green-600" />
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="w-6 h-6 text-green-600" />
+                  <button
+                    onClick={() => handleDisconnect('appleHealth')}
+                    className="text-sm text-red-600 hover:text-red-700"
+                  >
+                    Desconectar
+                  </button>
+                </div>
               ) : (
                 <button
                   onClick={() => handleConnect('appleHealth')}
@@ -143,11 +181,19 @@ export const FitnessConnectionModal: React.FC<FitnessConnectionModalProps> = ({ 
                 </div>
               </div>
               {connections.smartwatch ? (
-                <CheckCircle className="w-6 h-6 text-green-600" />
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="w-6 h-6 text-green-600" />
+                  <button
+                    onClick={() => handleDisconnect('smartwatch')}
+                    className="text-sm text-red-600 hover:text-red-700"
+                  >
+                    Desconectar
+                  </button>
+                </div>
               ) : (
                 <button
                   onClick={() => handleConnect('smartwatch')}
-                  disabled={loading.smartwatch}
+                  disabled={loading.smartwatch || !isBluetoothSupported}
                   className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-2"
                 >
                   {loading.smartwatch ? (
@@ -181,11 +227,19 @@ export const FitnessConnectionModal: React.FC<FitnessConnectionModalProps> = ({ 
                 </div>
               </div>
               {connections.amazfit ? (
-                <CheckCircle className="w-6 h-6 text-green-600" />
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="w-6 h-6 text-green-600" />
+                  <button
+                    onClick={() => handleDisconnect('amazfit')}
+                    className="text-sm text-red-600 hover:text-red-700"
+                  >
+                    Desconectar
+                  </button>
+                </div>
               ) : (
                 <button
                   onClick={() => handleConnect('amazfit')}
-                  disabled={loading.amazfit}
+                  disabled={loading.amazfit || !isBluetoothSupported}
                   className="bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-2"
                 >
                   {loading.amazfit ? (
@@ -222,7 +276,15 @@ export const FitnessConnectionModal: React.FC<FitnessConnectionModalProps> = ({ 
                 </div>
               </div>
               {connections.strava ? (
-                <CheckCircle className="w-6 h-6 text-green-600" />
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="w-6 h-6 text-green-600" />
+                  <button
+                    onClick={() => handleDisconnect('strava')}
+                    className="text-sm text-red-600 hover:text-red-700"
+                  >
+                    Desconectar
+                  </button>
+                </div>
               ) : (
                 <button
                   onClick={() => handleConnect('strava')}
@@ -255,7 +317,15 @@ export const FitnessConnectionModal: React.FC<FitnessConnectionModalProps> = ({ 
                 </div>
               </div>
               {connections.instagram ? (
-                <CheckCircle className="w-6 h-6 text-green-600" />
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="w-6 h-6 text-green-600" />
+                  <button
+                    onClick={() => handleDisconnect('instagram')}
+                    className="text-sm text-red-600 hover:text-red-700"
+                  >
+                    Desconectar
+                  </button>
+                </div>
               ) : (
                 <button
                   onClick={() => handleConnect('instagram')}
@@ -288,7 +358,15 @@ export const FitnessConnectionModal: React.FC<FitnessConnectionModalProps> = ({ 
                 </div>
               </div>
               {connections.facebook ? (
-                <CheckCircle className="w-6 h-6 text-green-600" />
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="w-6 h-6 text-green-600" />
+                  <button
+                    onClick={() => handleDisconnect('facebook')}
+                    className="text-sm text-red-600 hover:text-red-700"
+                  >
+                    Desconectar
+                  </button>
+                </div>
               ) : (
                 <button
                   onClick={() => handleConnect('facebook')}

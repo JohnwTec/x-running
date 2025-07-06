@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { Play } from 'lucide-react';
+import { Play, ArrowLeft } from 'lucide-react';
 import { UserProfile } from '../types';
 import { calculateIMC, classifyUser } from '../utils/calculations';
 
 interface ProfileSetupProps {
   onProfileComplete: (profile: UserProfile) => void;
+  onBack?: () => void;
 }
 
-export const ProfileSetup: React.FC<ProfileSetupProps> = ({ onProfileComplete }) => {
+export const ProfileSetup: React.FC<ProfileSetupProps> = ({ onProfileComplete, onBack }) => {
   const [profile, setProfile] = useState<Partial<UserProfile>>({
     name: '',
     age: 0,
@@ -44,11 +45,24 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({ onProfileComplete })
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Play className="w-8 h-8 text-blue-600" />
+          <div className="flex items-center justify-between mb-4">
+            {onBack && (
+              <button
+                onClick={onBack}
+                className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5 text-gray-600" />
+              </button>
+            )}
+            <div className="flex-1 text-center">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Play className="w-8 h-8 text-blue-600" />
+              </div>
+              <h2 className="text-3xl font-bold text-gray-800 mb-2">Configure seu Perfil</h2>
+              <p className="text-gray-600">Vamos personalizar seus treinos</p>
+            </div>
+            <div className="w-10"></div> {/* Spacer for alignment */}
           </div>
-          <h2 className="text-3xl font-bold text-gray-800 mb-2">Configure seu Perfil</h2>
-          <p className="text-gray-600">Vamos personalizar seus treinos</p>
         </div>
 
         <div className="space-y-6">

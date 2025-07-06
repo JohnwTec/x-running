@@ -1,10 +1,10 @@
 import React from 'react';
 import { BarChart3, Trophy, ArrowLeft, TrendingUp } from 'lucide-react';
-import { TrainingProgress } from '../types';
+import { TrainingProgress, Achievement } from '../types';
 
 interface TrainingHistoryProps {
   trainingProgress: TrainingProgress[];
-  achievements: string[];
+  achievements: Achievement[];
   onBack: () => void;
 }
 
@@ -25,11 +25,22 @@ export const TrainingHistory: React.FC<TrainingHistoryProps> = ({
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md max-h-screen overflow-y-auto">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <BarChart3 className="w-8 h-8 text-purple-600" />
+          <div className="flex items-center justify-between mb-4">
+            <button
+              onClick={onBack}
+              className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5 text-gray-600" />
+            </button>
+            <div className="flex-1 text-center">
+              <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <BarChart3 className="w-8 h-8 text-purple-600" />
+              </div>
+              <h2 className="text-3xl font-bold text-gray-800 mb-2">Histórico de Treinos</h2>
+              <p className="text-gray-600">Acompanhe seu progresso</p>
+            </div>
+            <div className="w-10"></div> {/* Spacer for alignment */}
           </div>
-          <h2 className="text-3xl font-bold text-gray-800 mb-2">Histórico de Treinos</h2>
-          <p className="text-gray-600">Acompanhe seu progresso</p>
         </div>
 
         {trainingProgress.length === 0 ? (
@@ -102,8 +113,14 @@ export const TrainingHistory: React.FC<TrainingHistoryProps> = ({
                 <div className="space-y-2">
                   {achievements.map((achievement, index) => (
                     <div key={index} className="flex items-center p-3 bg-yellow-50 rounded-lg">
-                      <Trophy className="w-5 h-5 text-yellow-600 mr-3" />
-                      <span className="text-yellow-800 font-medium">{achievement}</span>
+                      <span className="text-2xl mr-3">{achievement.icon}</span>
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-yellow-800">{achievement.name}</h4>
+                        <p className="text-sm text-yellow-700">{achievement.description}</p>
+                      </div>
+                      <span className="text-xs text-yellow-600">
+                        {new Date(achievement.unlockedAt).toLocaleDateString('pt-BR')}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -111,14 +128,6 @@ export const TrainingHistory: React.FC<TrainingHistoryProps> = ({
             </div>
           </div>
         )}
-
-        <button
-          onClick={onBack}
-          className="w-full mt-8 bg-gray-500 hover:bg-gray-600 text-white font-semibold py-4 px-6 rounded-lg transition-all transform hover:scale-105 flex items-center justify-center space-x-2"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          <span>Voltar</span>
-        </button>
       </div>
     </div>
   );

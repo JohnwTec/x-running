@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Target, Play } from 'lucide-react';
+import { Target, Play, ArrowLeft } from 'lucide-react';
 import { UserProfile, Goal } from '../types';
 import { getAgeGroup, calculateFCMax } from '../utils/calculations';
 import { getSuggestedGoal, getProgressionPlan } from '../utils/trainingPlans';
@@ -7,9 +7,10 @@ import { getSuggestedGoal, getProgressionPlan } from '../utils/trainingPlans';
 interface GoalSetupProps {
   userProfile: UserProfile;
   onGoalComplete: (goal: Goal) => void;
+  onBack?: () => void;
 }
 
-export const GoalSetup: React.FC<GoalSetupProps> = ({ userProfile, onGoalComplete }) => {
+export const GoalSetup: React.FC<GoalSetupProps> = ({ userProfile, onGoalComplete, onBack }) => {
   const suggestedGoal = getSuggestedGoal(userProfile.level!, userProfile.age);
   const [goal, setGoal] = useState<Goal>({
     type: 'suggested',
@@ -27,11 +28,24 @@ export const GoalSetup: React.FC<GoalSetupProps> = ({ userProfile, onGoalComplet
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Target className="w-8 h-8 text-green-600" />
+          <div className="flex items-center justify-between mb-4">
+            {onBack && (
+              <button
+                onClick={onBack}
+                className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5 text-gray-600" />
+              </button>
+            )}
+            <div className="flex-1 text-center">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Target className="w-8 h-8 text-green-600" />
+              </div>
+              <h2 className="text-3xl font-bold text-gray-800 mb-2">Defina sua Meta</h2>
+              <p className="text-gray-600">Vamos estabelecer seus objetivos</p>
+            </div>
+            <div className="w-10"></div> {/* Spacer for alignment */}
           </div>
-          <h2 className="text-3xl font-bold text-gray-800 mb-2">Defina sua Meta</h2>
-          <p className="text-gray-600">Vamos estabelecer seus objetivos</p>
         </div>
 
         <div className="space-y-6">
