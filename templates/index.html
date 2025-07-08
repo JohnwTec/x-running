@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Treinador de Corrida - Python Backend</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .status-card {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .stat-item {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+        
+        button {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: bold;
+            margin: 10px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .stop-btn {
+            background: linear-gradient(45deg, #f44336, #d32f2f);
+        }
+        
+        .gps-status {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: 15px 0;
+        }
+        
+        .signal-indicator {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+        
+        .signal-excellent { background: #4CAF50; }
+        .signal-good { background: #8BC34A; }
+        .signal-fair { background: #FFC107; }
+        .signal-poor { background: #F44336; }
+        
+        .form-group {
+            margin: 15px 0;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            font-size: 1em;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .calibration-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .modal-content {
+            background: white;
+            color: #333;
+            padding: 30px;
+            border-radius: 20px;
+            max-width: 400px;
+            text-align: center;
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏃‍♂️ Treinador de Corrida</h1>
+        
+        <!-- Formulário de Usuário -->
+        <div id="userForm" class="status-card">
+            <h2>Criar Perfil</h2>
+            <div class="form-group">
+                <label>Nome:</label>
+                <input type="text" id="userName" placeholder="Seu nome completo">
+            </div>
+            <div class="form-group">
+                <label>Idade:</label>
+                <input type="number" id="userAge" placeholder="30">
+            </div>
+            <div class="form-group">
+                <label>Peso (kg):</label>
+                <input type="number" id="userWeight" step="0.1" placeholder="70.5">
+            </div>
+            <div class="form-group">
+                <label>Altura (m):</label>
+                <input type="number" id="userHeight" step="0.01" placeholder="1.75">
+            </div>
+            <div class="form-group">
+                <label>Nível:</label>
+                <select id="userLevel">
+                    <option value="iniciante">Iniciante</option>
+                    <option value="intermediário">Intermediário</option>
+                    <option value="avançado">Avançado</option>
+                    <option value="profissional">Profissional</option>
+                </select>
+            </div>
+            <button onclick="createUser()">Criar Perfil</button>
+        </div>
+        
+        <!-- Controles de Treino -->
+        <div id="trainingControls" class="status-card hidden">
+            <h2>Controles de Treino</h2>
+            <div class="form-group">
+                <label>Tipo de Treino:</label>
+                <select id="trainingType">
+                    <option value="longa">Corrida Longa</option>
+                    <option value="intervalado">Treino Intervalado</option>
+                    <option value="warmup">Aquecimento</option>
+                </select>
+            </div>
+            <button id="startBtn" onclick="startTraining()">Iniciar Treino</button>
+            <button id="stopBtn" class="stop-btn hidden" onclick="stopTraining()">Parar Treino</button>
+            <button onclick="calibrateGPS()">Calibrar GPS</button>
+        </div>
+        
+        <!-- Status GPS -->
+        <div id="gpsStatus" class="status-card">
+            <h3>Status GPS</h3>
+            <div class="gps-status">
+                <div style="display: flex; align-items: center;">
+                    <div id="signalIndicator" class="signal-indicator signal-poor"></div>
+                    <span id="signalText">Aguardando GPS...</span>
+                </div>
+                <span id="accuracyText">±0m</span>
+            </div>
+            <div>Posições coletadas: <span id="positionCount">0</span></div>
+        </div>
+        
+        <!-- Estatísticas do Treino -->
+        <div id="trainingStats" class="status-card">
+            <h3>Estatísticas do Treino</h3>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-value" id="distanceValue">0.00</div>
+                    <div class="stat-label">km</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="durationValue">00:00</div>
+                    <div class="stat-label">tempo</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="paceValue">0.0</div>
+                    <div class="stat-label">min/km</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="speedValue">0.0</div>
+                    <div class="stat-label">km/h</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal de Calibração -->
+    <div id="calibrationModal" class="calibration-modal hidden">
+        <div class="modal-content">
+            <h2>🛰️ Calibrando GPS</h2>
+            <div class="pulse">
+                <div style="font-size: 4em; margin: 20px 0;">📍</div>
+            </div>
+            <p>Aguarde enquanto calibramos seu GPS para melhor precisão...</p>
+            <div>Precisão: <span id="calibrationAccuracy">±0m</span></div>
+            <div>Sinal: <span id="calibrationSignal">-</span></div>
+            <button onclick="closeCalibration()">Fechar</button>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        let isTraining = false;
+        let watchId = null;
+        let userId = null;
+        let trainingStartTime = null;
+        
+        // Conectar ao WebSocket
+        socket.on('connect', function() {
+            console.log('Conectado ao servidor Python!');
+        });
+        
+        // Receber atualizações do treino
+        socket.on('training_update', function(data) {
+            document.getElementById('distanceValue').textContent = data.distance.toFixed(3);
+            document.getElementById('durationValue').textContent = formatTime(data.duration);
+            document.getElementById('paceValue').textContent = data.pace.toFixed(1);
+            document.getElementById('speedValue').textContent = data.current_speed.toFixed(1);
+            
+            updateGPSStatus(data.signal_strength, data.accuracy);
+            document.getElementById('positionCount').textContent = data.total_positions;
+        });
+        
+        // Receber atualizações de calibração
+        socket.on('calibration_update', function(data) {
+            document.getElementById('calibrationAccuracy').textContent = `±${data.accuracy.toFixed(1)}m`;
+            document.getElementById('calibrationSignal').textContent = data.signal_strength;
+        });
+        
+        // Criar usuário
+        async function createUser() {
+            const userData = {
+                name: document.getElementById('userName').value,
+                age: parseInt(document.getElementById('userAge').value),
+                weight: parseFloat(document.getElementById('userWeight').value),
+                height: parseFloat(document.getElementById('userHeight').value),
+                level: document.getElementById('userLevel').value
+            };
+            
+            if (!userData.name || !userData.age || !userData.weight || !userData.height) {
+                alert('Por favor, preencha todos os campos!');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/user', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(userData)
+                });
+                
+                const result = await response.json();
+                if (result.status === 'success') {
+                    userId = result.user_id;
+                    document.getElementById('userForm').classList.add('hidden');
+                    document.getElementById('trainingControls').classList.remove('hidden');
+                    alert('Perfil criado com sucesso!');
+                }
+            } catch (error) {
+                console.error('Erro ao criar usuário:', error);
+                alert('Erro ao criar perfil. Tente novamente.');
+            }
+        }
+        
+        // Iniciar treino
+        async function startTraining() {
+            if (!userId) {
+                alert('Crie um perfil primeiro!');
+                return;
+            }
+            
+            const trainingType = document.getElementById('trainingType').value;
+            
+            try {
+                const response = await fetch('/api/training/start', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ type: trainingType })
+                });
+                
+                const result = await response.json();
+                if (result.status === 'started') {
+                    isTraining = true;
+                    trainingStartTime = Date.now();
+                    document.getElementById('startBtn').classList.add('hidden');
+                    document.getElementById('stopBtn').classList.remove('hidden');
+                    
+                    // Iniciar rastreamento GPS
+                    startGPSTracking();
+                    alert('Treino iniciado! GPS ativado.');
+                }
+            } catch (error) {
+                console.error('Erro ao iniciar treino:', error);
+                alert('Erro ao iniciar treino. Tente novamente.');
+            }
+        }
+        
+        // Parar treino
+        async function stopTraining() {
+            if (!isTraining) return;
+            
+            try {
+                const response = await fetch('/api/training/stop', {
+                    method: 'POST'
+                });
+                
+                const result = await response.json();
+                if (result.status === 'completed') {
+                    isTraining = false;
+                    document.getElementById('startBtn').classList.remove('hidden');
+                    document.getElementById('stopBtn').classList.add('hidden');
+                    
+                    // Parar rastreamento GPS
+                    stopGPSTracking();
+                    
+                    alert(`Treino concluído!\nDistância: ${result.distance.toFixed(2)} km\nTempo: ${formatTime(result.duration)}\nPace: ${result.pace.toFixed(1)} min/km`);
+                }
+            } catch (error) {
+                console.error('Erro ao parar treino:', error);
+                alert('Erro ao finalizar treino.');
+            }
+        }
+        
+        // Calibrar GPS
+        function calibrateGPS() {
+            document.getElementById('calibrationModal').classList.remove('hidden');
+            
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        socket.emit('calibrate_gps', {
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude,
+                            accuracy: position.coords.accuracy
+                        });
+                        
+                        setTimeout(() => {
+                            closeCalibration();
+                            alert('GPS calibrado com sucesso!');
+                        }, 3000);
+                    },
+                    function(error) {
+                        closeCalibration();
+                        alert('Erro ao calibrar GPS: ' + error.message);
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0
+                    }
+                );
+            } else {
+                closeCalibration();
+                alert('GPS não suportado neste dispositivo.');
+            }
+        }
+        
+        function closeCalibration() {
+            document.getElementById('calibrationModal').classList.add('hidden');
+        }
+        
+        // Iniciar rastreamento GPS
+        function startGPSTracking() {
+            if (!navigator.geolocation) {
+                alert('GPS não suportado neste dispositivo.');
+                return;
+            }
+            
+            const options = {
+                enableHighAccuracy: true,
+                timeout: 15000,
+                maximumAge: 2000
+            };
+            
+            watchId = navigator.geolocation.watchPosition(
+                function(position) {
+                    if (isTraining) {
+                        socket.emit('gps_position', {
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude,
+                            accuracy: position.coords.accuracy,
+                            speed: position.coords.speed,
+                            altitude: position.coords.altitude,
+                            heading: position.coords.heading
+                        });
+                    }
+                },
+                function(error) {
+                    console.error('Erro de GPS:', error);
+                    updateGPSStatus('poor', 999);
+                },
+                options
+            );
+        }
+        
+        // Parar rastreamento GPS
+        function stopGPSTracking() {
+            if (watchId !== null) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+            }
+        }
+        
+        // Atualizar status do GPS
+        function updateGPSStatus(signalStrength, accuracy) {
+            const indicator = document.getElementById('signalIndicator');
+            const signalText = document.getElementById('signalText');
+            const accuracyText = document.getElementById('accuracyText');
+            
+            indicator.className = `signal-indicator signal-${signalStrength}`;
+            
+            const statusTexts = {
+                'excellent': 'Excelente',
+                'good': 'Bom',
+                'fair': 'Regular',
+                'poor': 'Fraco'
+            };
+            
+            signalText.textContent = statusTexts[signalStrength] || 'Desconhecido';
+            accuracyText.textContent = `±${accuracy.toFixed(0)}m`;
+        }
+        
+        // Formatar tempo
+        function formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+        }
+        
+        // Solicitar permissão de localização ao carregar
+        window.addEventListener('load', function() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        console.log('Permissão de GPS concedida');
+                        updateGPSStatus('good', position.coords.accuracy);
+                    },
+                    function(error) {
+                        console.warn('Permissão de GPS negada ou erro:', error);
+                        updateGPSStatus('poor', 999);
+                    }
+                );
+            }
+        });
+    </script>
+</body>
+</html>
