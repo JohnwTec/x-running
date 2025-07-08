@@ -1,7 +1,9 @@
 import React from 'react';
-import { Play, Zap, RotateCcw, Target, ArrowLeft } from 'lucide-react';
+import { Play, Zap, RotateCcw, Target, ArrowLeft, Navigation } from 'lucide-react';
 import { UserProfile, Goal } from '../types';
 import { getAgeGroup } from '../utils/calculations';
+import { GPSCalibrationModal } from './GPSCalibrationModal';
+import { GPSTracker } from '../utils/gpsTracking';
 
 interface TrainingSelectionProps {
   userProfile: UserProfile;
@@ -12,14 +14,27 @@ interface TrainingSelectionProps {
 }
 
 export const TrainingSelection: React.FC<TrainingSelectionProps> = ({ 
+  const [showGPSCalibration, setShowGPSCalibration] = useState(false);
+  const [gpsTracker] = useState(() => new GPSTracker());
+
   userProfile, 
   goal, 
   onTrainingSelect, 
   onIntervalSelect,
   onBack
 }) => {
+  const handleStartTraining = (type: 'warmup' | 'longa' | 'intervalado', distance?: string) => {
+    // Verificar se GPS está disponível antes de iniciar treino
+    if (navigator.geolocation) {
+      setShowGPSCalibration(true);
+    } else {
+      onTrainingSelect(type, distance);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
         <div className="text-center mb-8">
           <div className="flex items-center justify-between mb-4">
@@ -43,9 +58,26 @@ export const TrainingSelection: React.FC<TrainingSelectionProps> = ({
           </div>
         </div>
 
+        {/* GPS Info */}
+        <div className="bg-blue-50 rounded-lg p-4 mb-6">
+          <div className="flex items-center mb-2">
+            <Navigation className="w-5 h-5 text-blue-600 mr-2" />
+            <h3 className="font-medium text-blue-800">Rastreamento GPS</h3>
+          </div>
+          <p className="text-sm text-blue-700 mb-3">
+            Para melhor precisão, calibraremos seu GPS antes do treino.
+          </p>
+          <button
+            onClick={() => setShowGPSCalibration(true)}
+            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+          >
+            Calibrar GPS agora →
+          </button>
+        </div>
+
         <div className="space-y-4">
           <button
-            onClick={() => onTrainingSelect('warmup')}
+            onClick={() => handleStartTraining('warmup')}
             className="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-4 px-6 rounded-lg transition-all transform hover:scale-105 flex items-center justify-center space-x-3 shadow-lg"
           >
             <RotateCcw className="w-6 h-6" />
@@ -56,7 +88,7 @@ export const TrainingSelection: React.FC<TrainingSelectionProps> = ({
           </button>
 
           <button
-            onClick={() => onTrainingSelect('longa')}
+            onClick={() => handleStartTraining('longa')}
             className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-4 px-6 rounded-lg transition-all transform hover:scale-105 flex items-center justify-center space-x-3 shadow-lg"
           >
             <Play className="w-6 h-6" />
@@ -85,6 +117,16 @@ export const TrainingSelection: React.FC<TrainingSelectionProps> = ({
           </p>
         </div>
       </div>
-    </div>
+      
+      <GPSCalibrationModal
+        isOpen={showGPSCalibration}
+        onClose={() => setShowGPSCalibration(false)}
+        onCalibrated={() => {
+          setShowGPSCalibration(false);
+          // Continuar com o treino após calibração
+        }}
+        gpsTracker={gpsTracker}
+      />
+    </>
   );
 };

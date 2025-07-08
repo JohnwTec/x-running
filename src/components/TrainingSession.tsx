@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Pause, Square, MapPin, Heart, Bluetooth, Settings, Share2, ArrowLeft, Save, RotateCcw, AlertTriangle } from 'lucide-react';
+import { Play, Pause, Square, Heart, Bluetooth, Settings, Share2, ArrowLeft, Save, RotateCcw, AlertTriangle, Navigation } from 'lucide-react';
 import { UserProfile, Position, AdaptiveSettings } from '../types';
 import { getTrainingPlan } from '../utils/trainingPlans';
 import { formatTime } from '../utils/calculations';
@@ -10,6 +10,8 @@ import { FitnessConnectionModal } from './FitnessConnectionModal';
 import { SocialShareModal } from './SocialShareModal';
 import { GPSTracker, GPSState } from '../utils/gpsTracking';
 import { fitnessIntegration } from '../utils/fitnessIntegration';
+import { GPSStatusIndicator } from './GPSStatusIndicator';
+import { GPSDebugPanel } from './GPSDebugPanel';
 
 interface TrainingSessionProps {
   userProfile: UserProfile;
@@ -53,6 +55,7 @@ export const TrainingSession: React.FC<TrainingSessionProps> = ({
   const [trainingCompleted, setTrainingCompleted] = useState(false);
   const [completedTrainingData, setCompletedTrainingData] = useState<any>(null);
   const [savedTrainingData, setSavedTrainingData] = useState<any>(null);
+  const [showGPSDebug, setShowGPSDebug] = useState(false);
   const [gpsTracker] = useState(() => new GPSTracker({
     onPositionUpdate: (position, state) => {
       setGpsState(state);
@@ -60,6 +63,9 @@ export const TrainingSession: React.FC<TrainingSessionProps> = ({
     },
     onError: (error) => {
       console.error('Erro de GPS:', error);
+      // Mostrar notificação de erro para o usuário
+      alert(`Erro de GPS: ${error.message}. Verifique se o GPS está ativado e tente novamente.`);
+    },
     },
     onStateChange: (state) => {
       setGpsState(state);
@@ -78,8 +84,15 @@ export const TrainingSession: React.FC<TrainingSessionProps> = ({
   // Configurar GPS e permissões
   useEffect(() => {
     const initializeGPS = async () => {
+      console.log('Inicializando GPS...');
       const hasPermission = await gpsTracker.requestPermission();
-      if (!hasPermission) {
+      if (hasPermission) {
+        console.log('Permissão de GPS concedida');
+        // Mostrar notificação de sucesso
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification('GPS Conectado', { body: 'GPS conectado com sucesso! Pronto para rastrear seu treino.' });
+        }
+      } else {
         console.warn('Permissão de GPS negada');
       }
     };
@@ -98,6 +111,17 @@ export const TrainingSession: React.FC<TrainingSessionProps> = ({
       window.removeEventListener('heartRateUpdate', handleHeartRateUpdate as EventListener);
     };
   }, [gpsTracker]);
+
+  // Verificar qualidade do GPS periodicamente
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (gpsState.isTracking && gpsState.accuracy > 30) {
+        console.warn('GPS com baixa precisão:', gpsState.accuracy, 'm');
+      }
+    }, 10000); // Verificar a cada 10 segundos
+
+    return () => clearInterval(interval);
+  }, [gpsState.isTracking, gpsState.accuracy]);
 
   // Timer
   useEffect(() => {
@@ -134,6 +158,11 @@ export const TrainingSession: React.FC<TrainingSessionProps> = ({
   }, [trainingType, showWarmup, isRunning, trainingProgress, currentPace, currentRestTime, userProfile.level]);
 
   const handleStart = () => {
+    if (!gpsState.isGPSEnabled) {
+      alert('GPS não está disponível. Ative o GPS nas configurações do dispositivo e recarregue a página.');
+      return;
+    }
+    
     setIsRunning(true);
     gpsTracker.startTracking();
   };
@@ -289,19 +318,6 @@ export const TrainingSession: React.FC<TrainingSessionProps> = ({
     return null;
   }
 
-  const getGPSStatusColor = () => {
-    if (!gpsState.isTracking) return 'text-gray-500';
-    if (gpsState.accuracy > 20) return 'text-red-500';
-    if (gpsState.accuracy > 10) return 'text-yellow-500';
-    return 'text-green-500';
-  };
-
-  const getGPSStatusText = () => {
-    if (!gpsState.isTracking) return 'GPS desconectado';
-    if (gpsState.accuracy > 20) return `GPS impreciso (${gpsState.accuracy.toFixed(0)}m)`;
-    if (gpsState.accuracy > 10) return `GPS moderado (${gpsState.accuracy.toFixed(0)}m)`;
-    return `GPS preciso (${gpsState.accuracy.toFixed(0)}m)`;
-  };
 
   return (
     <>
@@ -342,16 +358,8 @@ export const TrainingSession: React.FC<TrainingSessionProps> = ({
 
           {/* Status Cards */}
           <div className="grid grid-cols-2 gap-3 mb-6">
-            {/* GPS Status */}
-            <div className="bg-gray-50 p-3 rounded-lg">
-              <div className="flex items-center justify-center mb-1">
-                <MapPin className={`w-4 h-4 mr-1 ${getGPSStatusColor()}`} />
-                <span className="text-xs font-medium text-gray-600">GPS</span>
-              </div>
-              <p className={`text-xs text-center ${getGPSStatusColor()}`}>
-                {getGPSStatusText()}
-              </p>
-            </div>
+            {/* GPS Status - Componente melhorado */}
+            <GPSStatusIndicator gpsState={gpsState} />
 
             {/* Heart Rate */}
             <div className="bg-gray-50 p-3 rounded-lg">
@@ -364,6 +372,19 @@ export const TrainingSession: React.FC<TrainingSessionProps> = ({
               </p>
             </div>
           </div>
+
+          {/* GPS Warning */}
+          {gpsState.isTracking && gpsState.signalStrength === 'poor' && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+              <div className="flex items-center">
+                <AlertTriangle className="w-4 h-4 text-yellow-600 mr-2" />
+                <div>
+                  <p className="text-sm font-medium text-yellow-800">Sinal GPS fraco</p>
+                  <p className="text-xs text-yellow-700">Mova-se para área aberta para melhor precisão</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Saved Training Indicator */}
           {savedTrainingData && (
@@ -387,6 +408,14 @@ export const TrainingSession: React.FC<TrainingSessionProps> = ({
                   {(gpsState.speed * 3.6).toFixed(1)} km/h
                 </p>
               )}
+            </div>
+            <div className="bg-gray-50 p-4 rounded-lg text-center">
+              <div className="flex items-center justify-center mb-1">
+                <Navigation className="w-4 h-4 text-blue-600 mr-1" />
+                <span className="text-sm text-gray-600">Distância GPS</span>
+              </div>
+              <p className="text-lg font-bold text-blue-600">{gpsState.totalDistance.toFixed(3)}</p>
+              <p className="text-xs text-gray-500">km (GPS)</p>
             </div>
             <div className="bg-gray-50 p-4 rounded-lg text-center">
               <p className="text-2xl font-bold text-gray-800">{formatTime(timer)}</p>
@@ -496,6 +525,11 @@ export const TrainingSession: React.FC<TrainingSessionProps> = ({
           </div>
         </div>
       </div>
+      
+      {/* GPS Debug Panel */}
+      {process.env.NODE_ENV === 'development' && (
+        <GPSDebugPanel gpsTracker={gpsTracker} gpsState={gpsState} />
+      )}
 
       {/* Confirmation Modals */}
       {showSaveConfirm && (
