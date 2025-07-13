@@ -26,9 +26,14 @@ class WeatherService {
     try {
       // Se não tiver coordenadas, tentar obter localização
       if (!lat || !lon) {
-        const position = await this.getCurrentPosition();
-        lat = position.coords.latitude;
-        lon = position.coords.longitude;
+        try {
+          const position = await this.getCurrentPosition();
+          lat = position.coords.latitude;
+          lon = position.coords.longitude;
+        } catch (error) {
+          console.warn('Não foi possível obter localização para clima:', error);
+          // Usar dados simulados sem localização
+        }
       }
 
       // Em produção, usar API real como OpenWeatherMap

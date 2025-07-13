@@ -8,8 +8,10 @@ import { WarmupSession } from './WarmupSession';
 import { AdaptiveTrainingModal } from './AdaptiveTrainingModal';
 import { FitnessConnectionModal } from './FitnessConnectionModal';
 import { SocialShareModal } from './SocialShareModal';
+import { AICoachWidget } from './AICoachWidget';
 import { GPSTracker, GPSState } from '../utils/gpsTracking';
 import { fitnessIntegration } from '../utils/fitnessIntegration';
+import { aiCoach } from '../utils/aiCoach';
 import { GPSStatusIndicator } from './GPSStatusIndicator';
 import { GPSDebugPanel } from './GPSDebugPanel';
 
@@ -50,6 +52,7 @@ export const TrainingSession: React.FC<TrainingSessionProps> = ({
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
   const [showRestartConfirm, setShowRestartConfirm] = useState(false);
   const [adaptiveSuggestion, setAdaptiveSuggestion] = useState<any>(null);
+  const [aiCoachFeedback, setAiCoachFeedback] = useState<string>('');
   const [currentPace, setCurrentPace] = useState(0);
   const [currentRestTime, setCurrentRestTime] = useState(0);
   const [trainingCompleted, setTrainingCompleted] = useState(false);
@@ -74,11 +77,60 @@ export const TrainingSession: React.FC<TrainingSessionProps> = ({
   const plan = getTrainingPlan(userProfile, trainingType, intervalDistance);
   const pace = timer > 0 && distance > 0 ? (timer / 60) / distance : 0;
 
+  // IA Coach feedback em tempo real
+  useEffect(() => {
+    if (isRunning && timer > 60) { // Após 1 minuto de treino
+      generateAIFeedback();
+    }
+  }, [timer, distance, pace]);
+
+  const generateAIFeedback = async () => {
+    if (timer % 300 !== 0) return; // A cada 5 minutos
+    
+    try {
+      const context = {
+        userProfile,
+        recentTrainings: trainingProgress,
+        weeklyStats: [],
+        currentGoal: { distance: plan.distance || 5, months: 3, type: 'suggested' as const }
+      };
+      
+      // Simular feedback baseado no pace atual vs esperado
+      const expectedPace = plan.pace || 7;
+      const paceRatio = pace / expectedPace;
+      
+      let feedback = '';
+      if (paceRatio < 0.9) {
+        feedback = '🔥 Você está indo muito bem! Pace excelente, mas cuidado para não se esgotar muito cedo.';
+      } else if (paceRatio < 1.1) {
+        feedback = '👍 Pace perfeito! Continue assim, você está no ritmo ideal para seu objetivo.';
+      } else {
+        feedback = '💪 Sem pressa! Lembre-se que consistência é mais importante que velocidade.';
+      }
+      
+      setAiCoachFeedback(feedback);
+      
+      // Limpar feedback após 10 segundos
+      setTimeout(() => setAiCoachFeedback(''), 10000);
+    } catch (error) {
+      console.error('Erro ao gerar feedback da IA:', error);
+    }
+  };
+
   // Rest of the component code...
 
   return (
     <>
       {/* Component JSX */}
+      
+      {/* AI Coach Widget durante treino */}
+      {isRunning && (
+        <AICoachWidget
+          userProfile={userProfile}
+          recentTrainings={trainingProgress}
+          onOpenFullCoach={() => {}} // Desabilitado durante treino
+        />
+      )}
     </>
   );
 };
