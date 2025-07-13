@@ -5,9 +5,12 @@ import { formatTime, calculateIMC, getIMCCategory, getStatsComparison } from '..
 import { SyncStatus } from './SyncStatus';
 import { AuthModal } from './AuthModal';
 import { FitnessConnectionModal } from './FitnessConnectionModal';
+import { AICoachModal } from './AICoachModal';
+import { AICoachWidget } from './AICoachWidget';
 import { getCurrentUser, checkConnectivity, getLastSync } from '../utils/cloudStorage';
 import { syncPendingData, loadCloudDataIfAvailable } from '../utils/storage';
 import { fitnessIntegration } from '../utils/fitnessIntegration';
+import { weatherService } from '../utils/weatherService';
 
 interface DashboardProps {
   userProfile: UserProfile;
@@ -28,9 +31,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
 }) => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showFitnessModal, setShowFitnessModal] = useState(false);
+  const [showAICoachModal, setShowAICoachModal] = useState(false);
   const [isOnline, setIsOnline] = useState(checkConnectivity());
   const [lastSync, setLastSync] = useState(getLastSync());
   const [syncInProgress, setSyncInProgress] = useState(false);
+  const [weatherData, setWeatherData] = useState<any>(null);
+  const [healthMetrics, setHealthMetrics] = useState({
+    sleepQuality: 7,
+    stressLevel: 4,
+    energyLevel: 8
+  });
   const [fitnessConnections, setFitnessConnections] = useState({
     appleHealth: false,
     smartwatch: false,
@@ -48,7 +58,17 @@ export const Dashboard: React.FC<DashboardProps> = ({
   // Verificar conexões de fitness
   useEffect(() => {
     setFitnessConnections(fitnessIntegration.getConnectionStatus());
+    loadWeatherData();
   }, []);
+
+  const loadWeatherData = async () => {
+    try {
+      const weather = await weatherService.getCurrentWeather();
+      setWeatherData(weather);
+    } catch (error) {
+      console.error('Erro ao carregar dados meteorológicos:', error);
+    }
+  };
 
   // Monitorar conectividade
   useEffect(() => {
@@ -96,6 +116,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
     setSyncInProgress(false);
     setLastSync(getLastSync());
     window.location.reload();
+  };
+
+  const handleAIRecommendationAccept = (analysis: any) => {
+    setShowAICoachModal(false);
+    // Aplicar recomendação da IA
+    if (analysis.trainingType !== 'rest') {
+      onNavigate('chooseTraining');
+    }
   };
 
   const connectedDevicesCount = Object.values(fitnessConnections).filter(Boolean).length;
@@ -184,6 +212,59 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 </div>
               </div>
             )}
+          </div>
+
+          {/* AI Coach Section */}
+          <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center">
+                <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mr-3">
+                  <Brain className="w-6 h-6 text-purple-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-800">IA Coach Personalizado</h3>
+                  <p className="text-sm text-gray-600">
+                    Recomendações inteligentes baseadas em seus dados
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAICoachModal(true)}
+                className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+              >
+                Consultar IA
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-purple-600">
+                  {trainingProgress.length > 0 ? 
+                    (trainingProgress.slice(-3).reduce((sum, t) => sum + t.pace, 0) / Math.min(3, trainingProgress.length)).toFixed(1) 
+                    : '0.0'
+                  }
+                </div>
+                <p className="text-sm text-gray-500">Pace Médio (3 últimos)</p>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-600">
+                  {stats.week.count}
+                </div>
+                <p className="text-sm text-gray-500">Treinos esta semana</p>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-600">
+                  {healthMetrics.energyLevel}/10
+                </div>
+                <p className="text-sm text-gray-500">Energia</p>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-orange-600">
+                  {weatherData?.temperature || '--'}°C
+                </div>
+                <p className="text-sm text-gray-500">Temperatura</p>
+              </div>
+            </div>
           </div>
 
           {/* Stats Comparison */}
@@ -341,6 +422,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </div>
 
+      {/* AI Coach Widget */}
+      <AICoachWidget
+        userProfile={userProfile}
+        recentTrainings={trainingProgress}
+        onOpenFullCoach={() => setShowAICoachModal(true)}
+      />
       <AuthModal
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
@@ -350,6 +437,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
       <FitnessConnectionModal
         isOpen={showFitnessModal}
         onClose={() => setShowFitnessModal(false)}
+      />
+
+      <AICoachModal
+        isOpen={showAICoachModal}
+        onClose={() => setShowAICoachModal(false)}
+        onRecommendationAccept={handleAIRecommendationAccept}
+        userProfile={userProfile}
+        recentTrainings={trainingProgress}
+        weeklyStats={[]}
+        currentGoal={goal}
+        weatherData={weatherData}
+        healthMetrics={healthMetrics}
       />
     </>
   );
